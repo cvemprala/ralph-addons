@@ -1,6 +1,16 @@
-# Ralph Loop
+# Ralph Addons
 
-AI-assisted iterative development. A simple bash loop that repeatedly feeds the same prompt to an AI agent.
+Extensions to the Ralph Loop technique for AI-assisted iterative development.
+
+## Credits
+
+This builds on:
+- [Geoffrey Huntley's Ralph technique](https://ghuntley.com/ralph/) - the original idea of looping an AI agent with a prompt
+- [Chris Parsons' "Your Agent Orchestrator is Too Clever"](https://www.chrismdp.com/your-agent-orchestrator-is-too-clever/) - the argument for simplicity over complex multi-agent systems
+
+The insight from both: simple loops beat elaborate orchestration. The AI reads files, sees its previous work, and continues. No fancy state machines needed.
+
+This repo adds the practical infrastructure to make that work on real codebases.
 
 ---
 
@@ -66,7 +76,7 @@ Say you're building a user authentication feature - backend in Go, frontend in R
 
 ---
 
-## What We Built
+## What I Built
 
 Same core idea, with infrastructure:
 
@@ -404,9 +414,9 @@ See the `examples/` directory for a complete sample project (Todo app) you can c
 
 ---
 
-## What We Skipped
+## What I Skipped
 
-Some features we intentionally left out:
+Some features I intentionally left out:
 
 - **Parallel execution across repos** - coordination is hard, not worth the complexity
 - **AI model selection** - Claude CLI handles this already
