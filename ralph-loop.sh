@@ -34,27 +34,50 @@ NC='\033[0m' # No Color
 
 # Simple YAML parser - extracts value for a key
 # Usage: yaml_get "key.subkey" file.yaml
+# Supports up to 3 levels: "repos.backend.path"
 yaml_get() {
     local key="$1"
     local file="$2"
     local value=""
 
-    # Handle nested keys like "permissions.mode"
-    if [[ "$key" == *"."* ]]; then
+    # Count dots to determine nesting level
+    local dots="${key//[^.]}"
+    local level=${#dots}
+
+    if [ $level -eq 2 ]; then
+        # Three-level nesting: repos.backend.path
+        local l1="${key%%.*}"
+        local rest="${key#*.}"
+        local l2="${rest%%.*}"
+        local l3="${rest#*.}"
+        value=$(awk -v l1="$l1" -v l2="$l2" -v l3="$l3" '
+            $0 ~ "^"l1":" { in_l1=1; next }
+            in_l1 && /^[a-zA-Z]/ && $0 !~ "^  " { in_l1=0 }
+            in_l1 && $0 ~ "^  "l2":" { in_l2=1; next }
+            in_l2 && /^  [a-zA-Z]/ && $0 !~ "^    " { in_l2=0 }
+            in_l2 && $0 ~ "^    "l3":" {
+                gsub(/^    [a-zA-Z_]+: */, "");
+                gsub(/^["'"'"']|["'"'"']$/, "");
+                print;
+                exit
+            }
+        ' "$file")
+    elif [ $level -eq 1 ]; then
+        # Two-level nesting: permissions.mode
         local parent="${key%%.*}"
         local child="${key#*.}"
-        # Find the section and then the key within it
         value=$(awk -v parent="$parent" -v child="$child" '
             $0 ~ "^"parent":" { in_section=1; next }
             in_section && /^[a-zA-Z]/ && $0 !~ "^  " { in_section=0 }
             in_section && $0 ~ "^  "child":" {
                 gsub(/^  [a-zA-Z_]+: */, "");
-                gsub(/^["'\'']|["'\'']$/, "");
+                gsub(/^["'"'"']|["'"'"']$/, "");
                 print;
                 exit
             }
         ' "$file")
     else
+        # Top-level key
         value=$(grep "^$key:" "$file" | head -1 | sed 's/^[^:]*: *//' | sed 's/^["'\'']\|["'\'']$//g')
     fi
 
@@ -247,40 +270,39 @@ load_config() {
 }
 
 # Build Claude command arguments
+# Returns arguments in CLAUDE_CMD_ARGS array (must be called, not captured)
 build_claude_args() {
-    local args=()
+    CLAUDE_CMD_ARGS=()
 
     if [ "$DANGEROUS_SKIP_ALL" = "true" ]; then
-        args+=("--dangerously-skip-permissions")
+        CLAUDE_CMD_ARGS+=("--dangerously-skip-permissions")
     else
-        args+=("--permission-mode" "$PERMISSION_MODE")
+        CLAUDE_CMD_ARGS+=("--permission-mode" "$PERMISSION_MODE")
 
         # Add allowed tools
         if [ ${#ALLOWED_TOOLS[@]} -gt 0 ]; then
-            args+=("--allowedTools")
+            CLAUDE_CMD_ARGS+=("--allowedTools")
             for tool in "${ALLOWED_TOOLS[@]}"; do
-                args+=("$tool")
+                CLAUDE_CMD_ARGS+=("$tool")
             done
         fi
     fi
 
     # Add directories
-    args+=("--add-dir" "$SCRIPT_DIR")
-    [ -n "$REPO1_DIR" ] && args+=("--add-dir" "$REPO1_DIR")
-    [ -n "$REPO2_DIR" ] && args+=("--add-dir" "$REPO2_DIR")
+    CLAUDE_CMD_ARGS+=("--add-dir" "$SCRIPT_DIR")
+    [ -n "$REPO1_DIR" ] && CLAUDE_CMD_ARGS+=("--add-dir" "$REPO1_DIR")
+    [ -n "$REPO2_DIR" ] && CLAUDE_CMD_ARGS+=("--add-dir" "$REPO2_DIR")
 
     # Separator and files
-    args+=("--")
+    CLAUDE_CMD_ARGS+=("--")
 
     # Add context files first
     for ctx_file in "${CONTEXT_FILES[@]}"; do
-        args+=("$ctx_file")
+        CLAUDE_CMD_ARGS+=("$ctx_file")
     done
 
     # Add Ralph file
-    args+=("$RALPH_FILE")
-
-    echo "${args[@]}"
+    CLAUDE_CMD_ARGS+=("$RALPH_FILE")
 }
 
 # Function to sync branch with main
@@ -439,11 +461,11 @@ while :; do
 
     # Build and run Claude command
     cd "$WORK_DIR"
-    CLAUDE_ARGS=$(build_claude_args)
+    build_claude_args  # Sets CLAUDE_CMD_ARGS array
 
-    echo -e "Running: claude $CLAUDE_ARGS"
+    echo -e "Running: claude ${CLAUDE_CMD_ARGS[*]}"
 
-    if eval "claude $CLAUDE_ARGS" 2>&1 | tee "$LOG_FILE"; then
+    if claude "${CLAUDE_CMD_ARGS[@]}" 2>&1 | tee "$LOG_FILE"; then
         EXIT_CODE=0
         RETRY_COUNT=0  # Reset retry count on success
     else
