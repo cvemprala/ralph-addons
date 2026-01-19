@@ -1,0 +1,44 @@
+# Ralph Loop Configuration - Todo App Example
+# Copy this to your orchestration directory and update the paths
+
+ralph_file: RALPH.md
+progress_file: progress.txt
+
+# Context files - uncomment and add paths to files Claude should always read
+# context:
+#   - ./CODING_STANDARDS.md
+
+repos:
+  backend:
+    path: /path/to/your/todo-backend    # UPDATE THIS
+    task_prefixes: B
+    verify: "go build ./..."
+  frontend:
+    path: /path/to/your/todo-frontend   # UPDATE THIS
+    task_prefixes: F
+    verify: "pnpm tsc --noEmit"
+
+git:
+  feature_branch: feature/todo-app
+  sync_with_main: true
+  auto_commit: true
+  commit_message_prefix: "feat:"
+
+loop:
+  max_iterations: 50
+  pause_between_seconds: 2
+  retry_on_error: 1
+
+hooks:
+  # post_task: "./scripts/lint.sh"
+  # post_group: "./scripts/test.sh"
+  # on_complete: "./scripts/done.sh"
+
+permissions:
+  dangerous_skip_all: false
+  mode: acceptEdits
+  allowed_tools:
+    - "Bash(go:*)"
+    - "Bash(pnpm:*)"
+    - "Bash(npm:*)"
+    - "Bash(git:*)"

@@ -1,0 +1,68 @@
+# Ralph Loop Configuration
+# Copy this file to your orchestration directory and customize for your project
+
+# Task file (relative to this config file)
+ralph_file: RALPH.md
+
+# Progress file (relative to this config file)
+progress_file: progress.txt
+
+# Context files - always passed to Claude for consistency
+# These files are read at the start of each iteration
+context:
+  # - ./CODING_STANDARDS.md
+  # - ./API_PATTERNS.md
+
+# Repositories to work with
+# Define each repo with its path and task prefixes
+repos:
+  # Example: backend repo handles B* tasks
+  backend:
+    path: /path/to/your/backend
+    task_prefixes: B  # Tasks starting with B go to this repo
+    verify: "go build ./..."  # Command to verify task completion (optional)
+
+  # Example: frontend repo handles F* tasks
+  frontend:
+    path: /path/to/your/frontend
+    task_prefixes: F  # Tasks starting with F go to this repo
+    verify: "pnpm tsc --noEmit"  # Command to verify task completion (optional)
+
+# Git settings
+git:
+  feature_branch: feature/my-feature  # Branch to work on
+  sync_with_main: true                 # Fetch and merge main before starting
+  auto_commit: true                    # Commit when task group changes
+  commit_message_prefix: "feat:"       # Prefix for commit messages (feat:, fix:, chore:, etc.)
+
+# Loop settings
+loop:
+  max_iterations: 100          # Safety limit to prevent runaway loops
+  pause_between_seconds: 2     # Brief pause between iterations
+  retry_on_error: 0            # Number of retries on failure (0 = no retry)
+
+# Hooks - scripts to run at specific points
+hooks:
+  # post_task: "./scripts/run-lint.sh"      # After each task completes
+  # post_group: "./scripts/run-tests.sh"    # After task group changes (e.g., F1 -> F2)
+  # on_complete: "./scripts/notify.sh"      # When all tasks are done
+
+# Permission settings
+permissions:
+  # Set to true to bypass all permission checks (not recommended for production)
+  dangerous_skip_all: false
+
+  # Permission mode: acceptEdits, bypassPermissions, dontAsk, default
+  mode: acceptEdits
+
+  # Allowed bash commands (used when dangerous_skip_all is false)
+  # Format: tool(pattern) - e.g., Bash(go:*) allows all go commands
+  allowed_tools:
+    - "Bash(go:*)"
+    - "Bash(pnpm:*)"
+    - "Bash(npm:*)"
+    - "Bash(git:*)"
+    # Add more as needed:
+    # - "Bash(docker:*)"
+    # - "Bash(make:*)"
+    # - "Bash(kubectl:*)"
